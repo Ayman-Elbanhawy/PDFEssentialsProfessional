@@ -29,5 +29,8 @@ local.properties
 .gradle-home/
 .android/
 .kotlin/
+tmp-emulator-main.png
+tmp-emulator-overflow.png
+tmp-window-dump.xml
 
 .DS_Store
