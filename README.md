@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # PDF Essentials Professional
 
 This fork keeps the original Pdfium-based Android PDF renderer as a reusable module and layers a Kotlin, AndroidX, Material 3, Compose-based enterprise document platform on top of it.
@@ -426,3 +427,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ```
+=======
+# PDFEssentialsProfessional
+With PDF Essentials Professional AI Assistant, you can speed up your document workflows from any device. Your essential document solution, anywhere you go. Stay on top of your documents with powerful features for desktop, mobile, and web
+>>>>>>> origin/main
