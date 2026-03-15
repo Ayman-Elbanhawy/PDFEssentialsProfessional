@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # PDF Essentials Professional
 
 This fork keeps the original Pdfium-based Android PDF renderer as a reusable module and layers a Kotlin, AndroidX, Material 3, Compose-based enterprise document platform on top of it.
@@ -302,6 +301,12 @@ The latest pass adds native quick-tools and visual polish inspired by external o
 
 ## Managed Configuration
 
+Enterprise-specific guidance that used to live under `docs/enterprise/` has been folded into the main docs tree. The remaining deployment, security, privacy, and release guidance now lives under:
+- `docs/deployment/`
+- `docs/security/`
+- `docs/privacy/`
+- `docs/release/`
+
 Managed restrictions support enterprise deployment scenarios for:
 - tenant bootstrap and issuer/base URLs
 - AI provider defaults and restrictions
@@ -427,7 +432,3 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ```
-=======
-# PDFEssentialsProfessional
-With PDF Essentials Professional AI Assistant, you can speed up your document workflows from any device. Your essential document solution, anywhere you go. Stay on top of your documents with powerful features for desktop, mobile, and web
->>>>>>> origin/main
