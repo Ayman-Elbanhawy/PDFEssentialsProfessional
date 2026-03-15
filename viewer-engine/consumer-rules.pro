@@ -1,0 +1,2 @@
+-keep class com.github.barteksc.pdfviewer.** { *; }
+-dontwarn com.shockwave.**

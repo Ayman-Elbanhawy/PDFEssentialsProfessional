@@ -1,0 +1,2 @@
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@xml/restrictions,@string/restriction_tenant_base_url,@string/restriction_ai_endpoint,@string/restriction_collaboration_endpoint,@string/restriction_disable_cloud_ai,@string/restriction_force_watermark,@string/restriction_disable_external_sharing,@string/restriction_secure_logging" />

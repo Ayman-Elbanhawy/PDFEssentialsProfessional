@@ -1,0 +1,24 @@
+plugins {
+    id 'com.android.application' version '8.13.0' apply false
+    id 'com.android.library' version '8.13.0' apply false
+    id 'org.jetbrains.kotlin.android' version '2.0.21' apply false
+    id 'org.jetbrains.kotlin.plugin.compose' version '2.0.21' apply false
+    id 'org.jetbrains.kotlin.plugin.serialization' version '2.0.21' apply false
+    id 'com.google.devtools.ksp' version '2.0.21-1.0.27' apply false
+}
+
+subprojects {
+    tasks.withType(Test).configureEach {
+        testLogging {
+            events 'passed', 'skipped', 'failed'
+        }
+    }
+}
+
+
+tasks.register('releaseReadinessEvidence') {
+    group = 'verification'
+    description = 'Runs repo-wide release readiness evidence gates for grep checks, builds, tests, and reports.'
+    dependsOn(':app:releaseReadinessEvidence')
+}
+

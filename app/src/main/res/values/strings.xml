@@ -1,0 +1,22 @@
+<resources>
+    <string name="app_name">PDF Essentials Professional</string>
+    <string name="restriction_tenant_base_url">Tenant base URL</string>
+    <string name="restriction_tenant_issuer_url">Tenant issuer URL</string>
+    <string name="restriction_tenant_policy_base_url">Tenant policy endpoint</string>
+    <string name="restriction_ai_endpoint">AI endpoint</string>
+    <string name="restriction_collaboration_endpoint">Collaboration endpoint</string>
+    <string name="restriction_connector_base_url">Connector endpoint</string>
+    <string name="restriction_default_ai_provider">Default AI provider</string>
+    <string name="restriction_default_ai_model">Default AI model</string>
+    <string name="restriction_approved_ai_providers">Approved AI providers</string>
+    <string name="restriction_allowed_connectors">Allowed connectors</string>
+    <string name="restriction_allowed_destinations">Allowed destination patterns</string>
+    <string name="restriction_disable_ai">Disable all AI</string>
+    <string name="restriction_disable_cloud_ai">Disable cloud AI</string>
+    <string name="restriction_force_watermark">Force watermark text</string>
+    <string name="restriction_force_metadata_scrub">Force metadata scrub on export</string>
+    <string name="restriction_disable_external_sharing">Disable external sharing</string>
+    <string name="restriction_telemetry_upload_enabled">Allow telemetry upload</string>
+    <string name="restriction_telemetry_retention_days">Telemetry retention days</string>
+    <string name="restriction_secure_logging">Enable secure logging</string>
+</resources>

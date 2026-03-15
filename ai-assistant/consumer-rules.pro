@@ -1,0 +1,3 @@
+-keep class kotlinx.serialization.** { *; }
+-keepclassmembers class com.aymanelbanhawy.aiassistant.core.** { *; }
+-dontwarn org.conscrypt.**

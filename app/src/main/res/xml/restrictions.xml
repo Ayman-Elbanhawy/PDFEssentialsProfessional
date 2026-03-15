@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<restrictions xmlns:android="http://schemas.android.com/apk/res/android">
+    <restriction
+        android:key="managed_tenant_base_url"
+        android:title="@string/restriction_tenant_base_url"
+        android:restrictionType="string" />
+    <restriction
+        android:key="managed_tenant_issuer_url"
+        android:title="@string/restriction_tenant_issuer_url"
+        android:restrictionType="string" />
+    <restriction
+        android:key="managed_tenant_policy_base_url"
+        android:title="@string/restriction_tenant_policy_base_url"
+        android:restrictionType="string" />
+    <restriction
+        android:key="managed_ai_base_url"
+        android:title="@string/restriction_ai_endpoint"
+        android:restrictionType="string" />
+    <restriction
+        android:key="managed_collaboration_base_url"
+        android:title="@string/restriction_collaboration_endpoint"
+        android:restrictionType="string" />
+    <restriction
+        android:key="managed_connector_base_url"
+        android:title="@string/restriction_connector_base_url"
+        android:restrictionType="string" />
+    <restriction
+        android:key="managed_default_ai_provider"
+        android:title="@string/restriction_default_ai_provider"
+        android:restrictionType="string" />
+    <restriction
+        android:key="managed_default_ai_model"
+        android:title="@string/restriction_default_ai_model"
+        android:restrictionType="string" />
+    <restriction
+        android:key="managed_approved_ai_providers"
+        android:title="@string/restriction_approved_ai_providers"
+        android:restrictionType="string" />
+    <restriction
+        android:key="managed_allowed_connectors"
+        android:title="@string/restriction_allowed_connectors"
+        android:restrictionType="string" />
+    <restriction
+        android:key="managed_allowed_destinations"
+        android:title="@string/restriction_allowed_destinations"
+        android:restrictionType="string" />
+    <restriction
+        android:key="managed_disable_ai"
+        android:title="@string/restriction_disable_ai"
+        android:restrictionType="bool"
+        android:defaultValue="false" />
+    <restriction
+        android:key="managed_disable_cloud_ai"
+        android:title="@string/restriction_disable_cloud_ai"
+        android:restrictionType="bool"
+        android:defaultValue="false" />
+    <restriction
+        android:key="managed_force_watermark"
+        android:title="@string/restriction_force_watermark"
+        android:restrictionType="string" />
+    <restriction
+        android:key="managed_force_metadata_scrub"
+        android:title="@string/restriction_force_metadata_scrub"
+        android:restrictionType="bool"
+        android:defaultValue="false" />
+    <restriction
+        android:key="managed_disable_external_sharing"
+        android:title="@string/restriction_disable_external_sharing"
+        android:restrictionType="bool"
+        android:defaultValue="false" />
+    <restriction
+        android:key="managed_telemetry_upload_enabled"
+        android:title="@string/restriction_telemetry_upload_enabled"
+        android:restrictionType="bool"
+        android:defaultValue="true" />
+    <restriction
+        android:key="managed_telemetry_retention_days"
+        android:title="@string/restriction_telemetry_retention_days"
+        android:restrictionType="integer"
+        android:defaultValue="30" />
+    <restriction
+        android:key="managed_secure_logging"
+        android:title="@string/restriction_secure_logging"
+        android:restrictionType="bool"
+        android:defaultValue="true" />
+</restrictions>

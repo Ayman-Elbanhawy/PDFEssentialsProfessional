@@ -1,0 +1,23 @@
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = 'PDFEssentialsProfessional'
+
+include ':viewer-engine'
+project(':viewer-engine').projectDir = file('viewer-engine')
+include ':editor-core'
+include ':app'
+include ':ai-assistant'

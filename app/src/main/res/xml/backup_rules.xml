@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <exclude domain="database" path="editor-core.db" />
+    <exclude domain="database" path="editor-core.db-shm" />
+    <exclude domain="database" path="editor-core.db-wal" />
+    <exclude domain="file" path="cache" />
+    <exclude domain="file" path="no_backup" />
+    <exclude domain="file" path="diagnostics" />
+</full-backup-content>

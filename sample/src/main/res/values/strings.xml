@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">PDF Essentials Professional Demo</string>
+    <string name="pick_file">Pick file</string>
+    <string name="add_note">Add note</string>
+    <string name="add_signature">Add signature</string>
+    <string name="clear_edits">Clear edits</string>
+    <string name="save_pdf">Save PDF</string>
+    <string name="sample_note_text">Edited with PDF Essentials Professional</string>
+    <string name="signature_caption">Signature</string>
+    <string name="toast_pick_file_error">Unable to pick file. Check status of file manager.</string>
+    <string name="toast_note_added">Text edit added to this page.</string>
+    <string name="toast_signature_added">Signature added to this page.</string>
+    <string name="toast_edits_cleared">Pending edits cleared.</string>
+    <string name="toast_saved">Saved edited PDF to %1$s</string>
+    <string name="toast_save_failed">Unable to save edited PDF: %1$s</string>
+</resources>
