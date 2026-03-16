@@ -508,9 +508,11 @@ class EditorViewModel(
 
         when (action) {
             EditorAction.Organize -> {
+                val currentPage = session.state.value.selection.selectedPageIndex
                 organizeVisible.value = true
                 activePanel.value = WorkspacePanel.Annotate
                 sidebarVisible.value = false
+                selectedPageIndexes.value = setOf(currentPage)
                 refreshThumbnailsAsync()
             }
             EditorAction.Forms -> {
@@ -588,12 +590,90 @@ class EditorViewModel(
     fun showEditor() {
         organizeVisible.value = false
         sidebarVisible.value = true
+        selectedPageIndexes.value = emptySet()
     }
 
     fun showOrganize() {
+        val currentPage = session.state.value.selection.selectedPageIndex
         organizeVisible.value = true
         activePanel.value = WorkspacePanel.Annotate
         sidebarVisible.value = false
+        selectedPageIndexes.value = setOf(currentPage)
+        refreshThumbnailsAsync()
+    }
+
+    fun selectOrganizerPage(pageIndex: Int, extendSelection: Boolean) {
+        val document = session.state.value.document ?: return
+        if (pageIndex !in document.pages.indices) return
+
+        selectedPageIndexes.value = if (extendSelection) {
+            selectedPageIndexes.value.toMutableSet().apply {
+                if (!add(pageIndex)) remove(pageIndex)
+            }.toSet()
+        } else {
+            setOf(pageIndex)
+        }
+
+        viewModelScope.launch {
+            session.updateSelection(
+                session.state.value.selection.copy(
+                    selectedPageIndex = pageIndex,
+                    selectedAnnotationIds = emptySet(),
+                    selectedFormFieldName = null,
+                    selectedEditId = null,
+                ),
+            )
+        }
+    }
+
+    fun moveOrganizerPage(fromIndex: Int, toIndex: Int) {
+        val document = session.state.value.document ?: return
+        if (fromIndex !in document.pages.indices) return
+        if (toIndex !in document.pages.indices) return
+        if (fromIndex == toIndex) return
+
+        session.execute(ReorderPagesCommand(fromIndex, toIndex))
+        selectedPageIndexes.value = setOf(toIndex)
+
+        viewModelScope.launch {
+            session.updateSelection(
+                session.state.value.selection.copy(
+                    selectedPageIndex = toIndex,
+                    selectedAnnotationIds = emptySet(),
+                    selectedFormFieldName = null,
+                    selectedEditId = null,
+                ),
+            )
+        }
+
+        refreshThumbnailsAsync()
+    }
+
+    fun deleteOrganizerPages() {
+        val document = session.state.value.document ?: return
+        val pageIndexes = selectedPageIndexes.value
+        if (pageIndexes.isEmpty()) return
+
+        if (pageIndexes.size >= document.pages.size) {
+            showUserMessage("At least one page must remain in the document")
+            return
+        }
+
+        session.execute(DeletePagesCommand(pageIndexes))
+        selectedPageIndexes.value = emptySet()
+        refreshThumbnailsAsync()
+    }
+
+    fun duplicateOrganizerPages() {
+        val pageIndexes = selectedPageIndexes.value.sorted()
+        if (pageIndexes.isEmpty()) return
+
+        session.execute(DuplicatePagesCommand(pageIndexes))
+
+        selectedPageIndexes.value = pageIndexes
+            .mapIndexed { offset, originalIndex -> originalIndex + 1 + offset }
+            .toSet()
+
         refreshThumbnailsAsync()
     }
 
@@ -1717,7 +1797,62 @@ class EditorViewModel(
         }
     }
 
-    fun updateSplitRangeExpression(value: String) { splitRangeExpression.value = value }
+    fun updateSplitRangeExpression(value: String) {
+        splitRangeExpression.value = value
+    }
+
+    fun applySplitRange() {
+        val document = session.state.value.document ?: return
+
+        val request = when {
+            selectedPageIndexes.value.isNotEmpty() -> {
+                SplitRequest(
+                    mode = SplitMode.SelectedPages,
+                    selectedPageIndexes = selectedPageIndexes.value,
+                )
+            }
+
+            splitRangeExpression.value.isNotBlank() -> {
+                SplitRequest(
+                    mode = SplitMode.PageRanges,
+                    rangeExpression = splitRangeExpression.value,
+                )
+            }
+
+            else -> {
+                showUserMessage("Enter a page range or select pages first")
+                return
+            }
+        }
+
+        viewModelScope.launch {
+            val outputDir = File(
+                appContainer.appContext.cacheDir,
+                "split-output/${document.sessionId}",
+            )
+
+            runCatching {
+                repository.split(document, request, outputDir)
+            }.onSuccess { files ->
+                localEvents.emit(
+                    EditorSessionEvent.UserMessage(
+                        if (files.isEmpty()) {
+                            "No split files were created"
+                        } else {
+                            "Created ${files.size} split PDF file(s) in ${outputDir.absolutePath}"
+                        },
+                    ),
+                )
+            }.onFailure { error ->
+                localEvents.emit(
+                    EditorSessionEvent.UserMessage(
+                        error.message ?: "Unable to split document",
+                    ),
+                )
+            }
+        }
+    }
+
     fun splitByRange() { split(SplitRequest(SplitMode.PageRanges, rangeExpression = uiState.value.splitRangeExpression)) }
     fun splitOddPages() { split(SplitRequest(SplitMode.OddPages)) }
     fun splitEvenPages() { split(SplitRequest(SplitMode.EvenPages)) }
@@ -2588,7 +2723,6 @@ private data class ActiveReadAloudSession(
     val segments: List<String>,
     val startIndex: Int,
 )
-
 
 
 

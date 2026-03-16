@@ -326,6 +326,13 @@ private fun rememberEditorScreenCallbacks(
     onSubmitConnectorExport = viewModel::submitConnectorExport,
     onRotatePage = viewModel::rotateCurrentPage,
     onReorderPages = viewModel::showOrganize,
+    onCloseOrganize = viewModel::showEditor,
+    onSelectOrganizerPage = viewModel::selectOrganizerPage,
+    onMoveOrganizerPage = viewModel::moveOrganizerPage,
+    onDeleteOrganizerPages = viewModel::deleteOrganizerPages,
+    onDuplicateOrganizerPages = viewModel::duplicateOrganizerPages,
+    onSplitRangeChanged = viewModel::updateSplitRangeExpression,
+    onApplySplitRange = viewModel::applySplitRange,
     onUndo = viewModel::undo,
     onRedo = viewModel::redo,
     onSaveEditable = viewModel::saveEditable,
@@ -362,4 +369,3 @@ private fun persistReadPermission(context: android.content.Context, uri: Uri?) {
         )
     }
 }
-

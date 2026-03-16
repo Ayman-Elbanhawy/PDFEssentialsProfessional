@@ -1,7 +1,10 @@
 package com.aymanelbanhawy.enterprisepdf.app.editor
 
+import android.graphics.BitmapFactory
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -18,6 +21,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.automirrored.outlined.Comment
 import androidx.compose.material.icons.automirrored.outlined.Article
 import androidx.compose.material.icons.automirrored.outlined.Redo
@@ -26,6 +31,8 @@ import androidx.compose.material.icons.outlined.AdminPanelSettings
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.BorderColor
 import androidx.compose.material.icons.outlined.BugReport
+import androidx.compose.material.icons.outlined.CheckBox
+import androidx.compose.material.icons.outlined.CheckBoxOutlineBlank
 import androidx.compose.material.icons.outlined.FactCheck
 import androidx.compose.material.icons.outlined.FileOpen
 import androidx.compose.material.icons.outlined.ContentCopy
@@ -65,6 +72,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
 import com.aymanelbanhawy.aiassistant.core.AiProviderDraft
@@ -87,6 +96,7 @@ import com.aymanelbanhawy.editor.core.model.EditorAction
 import com.aymanelbanhawy.editor.core.model.FontFamilyToken
 import com.aymanelbanhawy.editor.core.model.PageEditModel
 import com.aymanelbanhawy.editor.core.model.TextAlignment
+import com.aymanelbanhawy.editor.core.organize.ThumbnailDescriptor
 import com.aymanelbanhawy.editor.core.scan.ScanImportOptions
 import com.aymanelbanhawy.editor.core.session.EditorSessionEvent
 import com.aymanelbanhawy.enterprisepdf.app.collaboration.ActivitySidebar
@@ -282,6 +292,13 @@ fun EditorScreen(
     onSubmitConnectorExport: () -> Unit,
     onRotatePage: () -> Unit,
     onReorderPages: () -> Unit,
+    onCloseOrganize: () -> Unit,
+    onSelectOrganizerPage: (Int, Boolean) -> Unit,
+    onMoveOrganizerPage: (Int, Int) -> Unit,
+    onDeleteOrganizerPages: () -> Unit,
+    onDuplicateOrganizerPages: () -> Unit,
+    onSplitRangeChanged: (String) -> Unit,
+    onApplySplitRange: () -> Unit,
     onUndo: () -> Unit,
     onRedo: () -> Unit,
     onSaveEditable: () -> Unit,
@@ -299,7 +316,6 @@ fun EditorScreen(
     val hasSelectedAnnotation = state.selectedAnnotation != null
     val hasSignatureFields = state.currentPageFormFields.any { it.type == FormFieldType.Signature }
     val hasConnectorAccounts = state.connectorAccounts.isNotEmpty()
-    val organizerPageCount = maxOf(document?.pages?.size ?: 0, state.thumbnails.size)
 
     LaunchedEffect(events) {
         events.collectLatest { event ->
@@ -583,15 +599,18 @@ fun EditorScreen(
                     }
                 }
                 if (state.organizeVisible) {
-                    OrganizerSurface(
+                    PageOrganizerPane(
                         modifier = Modifier.fillMaxSize().padding(12.dp),
-                        pageCount = organizerPageCount,
-                        currentPageIndex = session.selection.selectedPageIndex,
-                        onBack = { onActionSelected(EditorAction.Annotate) },
-                        onOpenPage = { pageIndex ->
-                            onPageChanged(pageIndex, organizerPageCount)
-                            onActionSelected(EditorAction.Annotate)
-                        },
+                        thumbnails = state.thumbnails,
+                        selectedPageIndexes = state.selectedPageIndexes,
+                        splitRangeExpression = state.splitRangeExpression,
+                        onClose = onCloseOrganize,
+                        onSelectPage = onSelectOrganizerPage,
+                        onMovePage = onMoveOrganizerPage,
+                        onDeleteSelected = onDeleteOrganizerPages,
+                        onDuplicateSelected = onDuplicateOrganizerPages,
+                        onSplitRangeChanged = onSplitRangeChanged,
+                        onApplySplitRange = onApplySplitRange,
                     )
                 } else {
                     Box(modifier = Modifier.fillMaxSize()) {
@@ -885,13 +904,21 @@ private fun AnnotationSidebar(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun OrganizerSurface(
+private fun PageOrganizerPane(
     modifier: Modifier = Modifier,
-    pageCount: Int,
-    currentPageIndex: Int,
-    onBack: () -> Unit,
-    onOpenPage: (Int) -> Unit,
+    thumbnails: List<ThumbnailDescriptor>,
+    selectedPageIndexes: Set<Int>,
+    splitRangeExpression: String,
+    onClose: () -> Unit,
+    onSelectPage: (Int, Boolean) -> Unit,
+    onMovePage: (Int, Int) -> Unit,
+    onDeleteSelected: () -> Unit,
+    onDuplicateSelected: () -> Unit,
+    onSplitRangeChanged: (String) -> Unit,
+    onApplySplitRange: () -> Unit,
 ) {
+    val hasSelection = selectedPageIndexes.isNotEmpty()
+
     Surface(
         modifier = modifier,
         tonalElevation = 2.dp,
@@ -909,84 +936,142 @@ private fun OrganizerSurface(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Organizer", style = MaterialTheme.typography.titleLarge)
+                    Text("Page Organizer", style = MaterialTheme.typography.titleLarge)
                     Text(
-                        text = if (pageCount == 1) "1 page" else "$pageCount pages",
+                        text = "${thumbnails.size} pages",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
 
-                TextButton(onClick = onBack) {
+                TextButton(onClick = onClose) {
                     Text("Back to Editor")
                 }
             }
 
-            Text(
-                text = "Select a page to jump back into the editor.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconTooltipButton(
+                    icon = Icons.Outlined.Delete,
+                    tooltip = "Delete Selected Pages",
+                    enabled = hasSelection,
+                    onClick = onDeleteSelected,
+                )
+                IconTooltipButton(
+                    icon = Icons.Outlined.ContentCopy,
+                    tooltip = "Duplicate Selected Pages",
+                    enabled = hasSelection,
+                    onClick = onDuplicateSelected,
+                )
+            }
+
+            androidx.compose.material3.OutlinedTextField(
+                value = splitRangeExpression,
+                onValueChange = onSplitRangeChanged,
+                label = { Text("Split range") },
+                placeholder = { Text("Examples: 1-3,5 or leave selection active") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
             )
 
-            if (pageCount <= 0) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    tonalElevation = 1.dp,
-                ) {
-                    Text(
-                        text = "No pages are available for organizing yet.",
-                        modifier = Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-            } else {
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    repeat(pageCount) { pageIndex ->
-                        val selected = pageIndex == currentPageIndex
+            TextButton(
+                onClick = onApplySplitRange,
+                enabled = hasSelection || splitRangeExpression.isNotBlank(),
+            ) {
+                Text("Apply Split")
+            }
 
-                        Surface(
-                            modifier = Modifier.width(104.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            tonalElevation = if (selected) 4.dp else 1.dp,
-                            color = if (selected) {
-                                MaterialTheme.colorScheme.secondaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.surfaceVariant
-                            },
-                            onClick = { onOpenPage(pageIndex) },
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                thumbnails.forEach { thumbnail ->
+                    val selected = thumbnail.pageIndex in selectedPageIndexes
+                    val preview = remember(thumbnail.imagePath) {
+                        BitmapFactory.decodeFile(thumbnail.imagePath)?.asImageBitmap()
+                    }
+
+                    Surface(
+                        modifier = Modifier.width(156.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        tonalElevation = if (selected) 4.dp else 1.dp,
+                        color = if (selected) {
+                            MaterialTheme.colorScheme.secondaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.surfaceVariant
+                        },
+                        onClick = { onSelectPage(thumbnail.pageIndex, false) },
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
-                            Column(
+                            Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(12.dp),
-                                verticalArrangement = Arrangement.spacedBy(10.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
+                                    .aspectRatio(0.75f)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(MaterialTheme.colorScheme.surface),
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(112.dp)
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(MaterialTheme.colorScheme.surface),
-                                )
-
-                                Text(
-                                    text = "Page ${pageIndex + 1}",
-                                    style = MaterialTheme.typography.labelLarge,
-                                )
-
-                                if (selected) {
-                                    Text(
-                                        text = "Current",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.primary,
+                                if (preview != null) {
+                                    Image(
+                                        bitmap = preview,
+                                        contentDescription = null,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize(),
                                     )
+                                } else {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Text(
+                                            text = "Page ${thumbnail.pageIndex + 1}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                        )
+                                    }
                                 }
+                            }
+
+                            Text(
+                                text = "Page ${thumbnail.pageIndex + 1}",
+                                style = MaterialTheme.typography.labelLarge,
+                            )
+
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                IconTooltipButton(
+                                    icon = if (selected) {
+                                        Icons.Outlined.CheckBox
+                                    } else {
+                                        Icons.Outlined.CheckBoxOutlineBlank
+                                    },
+                                    tooltip = "Toggle multi-select",
+                                    onClick = { onSelectPage(thumbnail.pageIndex, true) },
+                                )
+
+                                IconTooltipButton(
+                                    icon = Icons.AutoMirrored.Outlined.ArrowBack,
+                                    tooltip = "Move Left",
+                                    enabled = thumbnail.pageIndex > 0,
+                                    onClick = {
+                                        onMovePage(thumbnail.pageIndex, thumbnail.pageIndex - 1)
+                                    },
+                                )
+
+                                IconTooltipButton(
+                                    icon = Icons.AutoMirrored.Outlined.ArrowForward,
+                                    tooltip = "Move Right",
+                                    enabled = thumbnail.pageIndex < thumbnails.lastIndex,
+                                    onClick = {
+                                        onMovePage(thumbnail.pageIndex, thumbnail.pageIndex + 1)
+                                    },
+                                )
                             }
                         }
                     }
@@ -1075,10 +1160,6 @@ private fun EditorAction.tooltipLabel(): String = when (this) {
     EditorAction.Settings -> "Settings"
     EditorAction.Diagnostics -> "Diagnostics"
 }
-
-
-
-
 
 
 
