@@ -651,7 +651,7 @@ class EditorViewModel(
 
     fun deleteOrganizerPages() {
         val document = session.state.value.document ?: return
-        val pageIndexes = selectedPageIndexes.value
+        val pageIndexes = selectedPageIndexes.value.sorted()
         if (pageIndexes.isEmpty()) return
 
         if (pageIndexes.size >= document.pages.size) {
@@ -659,7 +659,7 @@ class EditorViewModel(
             return
         }
 
-        session.execute(DeletePagesCommand(pageIndexes))
+        session.execute(DeletePagesCommand(selectedPageIndexes.value))
         selectedPageIndexes.value = emptySet()
         refreshThumbnailsAsync()
     }
@@ -739,8 +739,25 @@ class EditorViewModel(
 
     fun summarizeDocumentWithAi() {
         val document = session.state.value.document ?: return
+        val prompt = assistantState.value.prompt.trim()
+
         viewModelScope.launch {
-            appContainer.aiAssistantRepository.summarizeDocument(document, entitlements.value, enterpriseState.value)
+            if (prompt.isNotBlank()) {
+                appContainer.aiAssistantRepository.askPdf(
+                    document,
+                    "Provide a concise document summary. Pay special attention to this user request: $prompt",
+                    selectedTextSelection.value,
+                    entitlements.value,
+                    enterpriseState.value,
+                )
+            } else {
+                appContainer.aiAssistantRepository.summarizeDocument(
+                    document,
+                    entitlements.value,
+                    enterpriseState.value,
+                )
+            }
+
             syncAssistantStateFromRepository()
             speakLatestAssistantResultIfEligible()
         }
@@ -1815,7 +1832,7 @@ class EditorViewModel(
             splitRangeExpression.value.isNotBlank() -> {
                 SplitRequest(
                     mode = SplitMode.PageRanges,
-                    rangeExpression = splitRangeExpression.value,
+                    rangeExpression = splitRangeExpression.value.trim(),
                 )
             }
 
@@ -1826,10 +1843,14 @@ class EditorViewModel(
         }
 
         viewModelScope.launch {
-            val outputDir = File(
-                appContainer.appContext.cacheDir,
-                "split-output/${document.sessionId}",
-            )
+            val tempAnchor = repository.createAutosaveTempFile("split-${document.documentRef.sourceKey.hashCode()}")
+            val parentDir = tempAnchor.parentFile
+            if (parentDir == null) {
+                localEvents.emit(EditorSessionEvent.UserMessage("Unable to prepare split output directory"))
+                return@launch
+            }
+
+            val outputDir = File(parentDir, "split-${System.currentTimeMillis()}").apply { mkdirs() }
 
             runCatching {
                 repository.split(document, request, outputDir)
@@ -2723,7 +2744,6 @@ private data class ActiveReadAloudSession(
     val segments: List<String>,
     val startIndex: Int,
 )
-
 
 
 

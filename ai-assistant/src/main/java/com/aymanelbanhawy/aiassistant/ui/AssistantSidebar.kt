@@ -105,7 +105,22 @@ fun AssistantSidebar(
                     Text(state.availability.reason ?: providerState.diagnosticsMessage.ifBlank { "Grounded answers use page and region citations." }, style = MaterialTheme.typography.bodyMedium, color = if (state.availability.enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error)
                 }
             }
-            item { OutlinedTextField(value = state.prompt, onValueChange = onPromptChanged, modifier = Modifier.fillMaxWidth(), label = { Text("Ask about this PDF or document set") }, minLines = 3) }
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    OutlinedTextField(
+                        value = state.prompt,
+                        onValueChange = onPromptChanged,
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Ask about this PDF or document set") },
+                        minLines = 3,
+                    )
+                    Text(
+                        text = "Ask PDF answers your typed question. Quick Summary creates a concise overview and will bias toward your prompt when one is present.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
             item {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     AssistantPrivacyMode.entries.forEach { mode -> FilterChip(selected = state.settings.privacyMode == mode, onClick = { onPrivacyModeChanged(mode) }, label = { Text(mode.name) }) }
@@ -235,7 +250,7 @@ fun AssistantSidebar(
             item {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     AssistantActionButton(icon = Icons.Outlined.AutoAwesome, tooltip = "Ask PDF", enabled = state.availability.enabled && !state.isWorking, onClick = onAskPdf)
-                    AssistantActionButton(icon = Icons.AutoMirrored.Outlined.Subject, tooltip = "Summarize Document", enabled = state.availability.enabled && !state.isWorking, onClick = onSummarizeDocument)
+                    AssistantActionButton(icon = Icons.AutoMirrored.Outlined.Subject, tooltip = "Quick Summary", enabled = state.availability.enabled && !state.isWorking, onClick = onSummarizeDocument)
                     AssistantActionButton(icon = Icons.Outlined.Description, tooltip = "Summarize Page", enabled = state.availability.enabled && !state.isWorking, onClick = onSummarizePage)
                     AssistantActionButton(icon = Icons.Outlined.Checklist, tooltip = "Extract Action Items", enabled = state.availability.enabled && !state.isWorking, onClick = onExtractActionItems)
                     AssistantActionButton(icon = Icons.AutoMirrored.Outlined.HelpOutline, tooltip = "Explain Selection", enabled = state.availability.enabled && !state.isWorking, onClick = onExplainSelection)
@@ -367,7 +382,6 @@ private fun defaultProviderName(kind: AiProviderKind): String = when (kind) {
     AiProviderKind.OpenAi -> "OpenAI"
     AiProviderKind.OpenAiCompatible -> "OpenAI Compatible"
 }
-
 
 
 
