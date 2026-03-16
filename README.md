@@ -104,6 +104,7 @@ The repo is no longer only a viewer widget project. It now contains a modular mo
 - Proper Android `ACTION_VIEW` PDF open-with support in `MainActivity`
 - `ACTION_SEND` PDF stream intake for shared files
 - Single-document PDF opening through the Android Storage Access Framework system picker
+- Dedicated fallback `Open from Files` flow through `GetContent("*/*")` for providers that behave better outside the SAF document contract
 - Clear top-level file actions:
   - `Open PDF`
   - `Open from Files`
@@ -112,6 +113,8 @@ The repo is no longer only a viewer widget project. It now contains a modular mo
 - Recent PDF reopen support backed by existing Room recent-document state
 - PDF open is intentionally separate from form-profile import, which remains JSON-only
 - The primary file-open flow uses SAF so Google Drive, Downloads, Documents, Files providers, and on-device storage all appear through one consistent Android picker instead of custom provider integrations
+- PDF detection now accepts broader PDF-like MIME types and can fall back to `%PDF-` header sniffing when Android providers return `application/octet-stream`, `*/*`, or incomplete metadata
+- Persistable URI permission requests are limited to `content://` documents, which avoids unnecessary failures on non-persistable URIs
 
 ### Premium mobile UI and accessibility
 - Premium Compose design system with upgraded light and dark themes
@@ -122,6 +125,35 @@ The repo is no longer only a viewer widget project. It now contains a modular mo
 - Additional premium quick-tools and lightweight edit surfaces inspired by pdf-editor-android-app, reinterpreted natively in Compose
 - Refined icon buttons, cards, inspector surfaces, and organize/edit chrome for faster page and object workflows
 - Snapshot proof coverage for organize quick tools and lightweight edit tools in light and dark themes
+- App-bar and overflow actions now disable themselves when no document or connector account is available, reducing dead-click states across save, share, export, optimize, and connector flows
+- Search navigation, OCR batch actions, annotation recolor actions, and signature entry points now reflect whether the current document/page state can actually support them
+
+## Latest Editor UX Updates
+
+The latest pass focused on making the core file-open and editor controls feel honest and responsive instead of looking clickable while doing nothing.
+
+- PDF open reliability:
+  - `Open PDF` stays on the Android SAF picker with broader MIME acceptance
+  - `Open from Files` is now a real fallback path instead of duplicating the SAF action
+  - PDFs can still open when a provider omits the `.pdf` extension or reports a generic binary MIME type, as long as the file header begins with `%PDF-`
+- Menu and top-bar behavior:
+  - save and share actions disable when no document is open
+  - connector export actions disable until both a document and connector account exist
+  - export and optimization actions disable when there is nothing to export or optimize
+  - the recent-files label now renders like a section header instead of a fake disabled action
+- Annotate, forms, sign, and search behavior:
+  - annotate controls now distinguish document-level actions from selected-annotation actions
+  - signature entry in annotate only enables when the current page actually has signature fields
+  - sign mode now focuses on signature fields and saved signatures instead of showing the full form-profile workflow
+  - search previous/next and OCR batch controls disable when there are no hits or OCR jobs
+  - bookmark entries now render as readable rows with title and page number instead of icon-only actions
+- Organizer behavior:
+  - the Organize rail action now opens a visible organizer surface
+  - organizer mode hides normal annotate chrome and right-side sidebars while active
+  - users can return with `Back to Editor` or jump directly to a page tile to reopen that page in the editor
+- Form profile import:
+  - form-profile import now uses `OpenDocument`
+  - the import flow accepts `application/json`, `application/octet-stream`, and `text/plain` to better tolerate Android provider quirks while still routing into the existing JSON import logic
 
 ### Native inspiration report
 - Product ideas were reviewed from:
@@ -276,6 +308,9 @@ These are the current bugs or open issues we still know about in the repo:
 
 8. Folder browsing is still intentionally separate from normal PDF open.
    - The primary supported open path is the SAF single-document picker. A dedicated folder browser has not been added in this pass, which avoids replacing the standard PDF-open experience with a tree-only workflow.
+
+9. The organizer view is currently a safe jump-surface, not a full reorder/split workspace.
+   - The new organizer mode is now visible and usable for page navigation, but true drag reorder, delete, duplicate, and split actions still need to be wired through the current screen callback contract for end-to-end organizer editing.
 
 ## Task 65 Additions
 

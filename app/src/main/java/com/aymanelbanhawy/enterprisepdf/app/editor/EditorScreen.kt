@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -24,6 +25,7 @@ import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.material.icons.outlined.AdminPanelSettings
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.BorderColor
+import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.FactCheck
 import androidx.compose.material.icons.outlined.FileOpen
 import androidx.compose.material.icons.outlined.ContentCopy
@@ -74,6 +76,7 @@ import com.aymanelbanhawy.editor.core.enterprise.AdminPolicyModel
 import com.aymanelbanhawy.editor.core.enterprise.LicensePlan
 import com.aymanelbanhawy.editor.core.enterprise.PrivacySettingsModel
 import com.aymanelbanhawy.editor.core.enterprise.TenantConfigurationModel
+import com.aymanelbanhawy.editor.core.forms.FormFieldType
 import com.aymanelbanhawy.editor.core.forms.SignatureKind
 import com.aymanelbanhawy.editor.core.security.DocumentPermissionModel
 import com.aymanelbanhawy.editor.core.security.MetadataScrubOptionsModel
@@ -292,6 +295,11 @@ fun EditorScreen(
     var overflowExpanded by remember { mutableStateOf(false) }
     val session = state.session
     val document = session.document
+    val hasDocument = document != null
+    val hasSelectedAnnotation = state.selectedAnnotation != null
+    val hasSignatureFields = state.currentPageFormFields.any { it.type == FormFieldType.Signature }
+    val hasConnectorAccounts = state.connectorAccounts.isNotEmpty()
+    val organizerPageCount = maxOf(document?.pages?.size ?: 0, state.thumbnails.size)
 
     LaunchedEffect(events) {
         events.collectLatest { event ->
@@ -354,13 +362,27 @@ fun EditorScreen(
                     IconTooltipButton(icon = Icons.AutoMirrored.Outlined.Undo, tooltip = "Undo", enabled = session.undoRedoState.canUndo, onClick = onUndo)
                     IconTooltipButton(icon = Icons.AutoMirrored.Outlined.Redo, tooltip = "Redo", enabled = session.undoRedoState.canRedo, onClick = onRedo)
                     IconTooltipButton(icon = Icons.Outlined.FileOpen, tooltip = "Open PDF", onClick = onOpenPdf)
-                    IconTooltipButton(icon = Icons.Outlined.Save, tooltip = "Save Editable", onClick = onSaveEditable)
-                    IconTooltipButton(icon = Icons.Outlined.IosShare, tooltip = "Share", onClick = { onActionSelected(EditorAction.Share) })
+                    IconTooltipButton(
+                        icon = Icons.Outlined.Save,
+                        tooltip = "Save Editable",
+                        enabled = hasDocument,
+                        onClick = onSaveEditable,
+                    )
+                    IconTooltipButton(
+                        icon = Icons.Outlined.IosShare,
+                        tooltip = "Share",
+                        enabled = hasDocument,
+                        onClick = { onActionSelected(EditorAction.Share) },
+                    )
                     IconTooltipButton(icon = Icons.Outlined.MoreVert, tooltip = "More", onClick = { overflowExpanded = true })
                     DropdownMenu(expanded = overflowExpanded, onDismissRequest = { overflowExpanded = false }) {
                         DropdownMenuItem(text = { Text("Open PDF") }, onClick = { overflowExpanded = false; onOpenPdf() })
                         DropdownMenuItem(text = { Text("Open from Files") }, onClick = { overflowExpanded = false; onOpenFromFiles() })
-                        DropdownMenuItem(text = { Text("Open Recent") }, enabled = false, onClick = {})
+                        Text(
+                            text = "Recent PDFs",
+                            style = MaterialTheme.typography.labelMedium,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        )
                         if (state.recentDocuments.isNotEmpty()) {
                             state.recentDocuments.take(5).forEach { recentDocument ->
                                 DropdownMenuItem(
@@ -375,25 +397,84 @@ fun EditorScreen(
                             DropdownMenuItem(text = { Text("No recent PDFs yet") }, enabled = false, onClick = {})
                         }
                         HorizontalDivider()
-                        DropdownMenuItem(text = { Text("Save Flattened") }, onClick = { overflowExpanded = false; onSaveFlattened() })
-                        DropdownMenuItem(text = { Text("Save Editable To Connector") }, onClick = { overflowExpanded = false; onSaveToConnectorEditable() })
-                        DropdownMenuItem(text = { Text("Save Flattened To Connector") }, onClick = { overflowExpanded = false; onSaveToConnectorFlattened() })
-                        DropdownMenuItem(text = { Text("Share To Connector") }, onClick = { overflowExpanded = false; onShareToConnectorEditable() })
-                        DropdownMenuItem(text = { Text("Save Editable Copy") }, onClick = { overflowExpanded = false; onSaveAsEditable() })
-                        DropdownMenuItem(text = { Text("Save Flattened Copy") }, onClick = { overflowExpanded = false; onSaveAsFlattened() })
+                        DropdownMenuItem(
+                            text = { Text("Save Flattened") },
+                            enabled = hasDocument,
+                            onClick = { overflowExpanded = false; onSaveFlattened() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Save Editable To Connector") },
+                            enabled = hasDocument && hasConnectorAccounts,
+                            onClick = { overflowExpanded = false; onSaveToConnectorEditable() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Save Flattened To Connector") },
+                            enabled = hasDocument && hasConnectorAccounts,
+                            onClick = { overflowExpanded = false; onSaveToConnectorFlattened() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Share To Connector") },
+                            enabled = hasDocument && hasConnectorAccounts,
+                            onClick = { overflowExpanded = false; onShareToConnectorEditable() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Save Editable Copy") },
+                            enabled = hasDocument,
+                            onClick = { overflowExpanded = false; onSaveAsEditable() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Save Flattened Copy") },
+                            enabled = hasDocument,
+                            onClick = { overflowExpanded = false; onSaveAsFlattened() },
+                        )
                         HorizontalDivider()
                         DropdownMenuItem(text = { Text("Import Form Profile (JSON)") }, onClick = { overflowExpanded = false; onImportProfile() })
-                        DropdownMenuItem(text = { Text("Images To Searchable PDF") }, onClick = { overflowExpanded = false; onShowScanImport() })
-                        DropdownMenuItem(text = { Text("Export Text") }, onClick = { overflowExpanded = false; workflowExportActions.onExportText() })
-                        DropdownMenuItem(text = { Text("Export Markdown") }, onClick = { overflowExpanded = false; workflowExportActions.onExportMarkdown() })
-                        DropdownMenuItem(text = { Text("Export Word") }, onClick = { overflowExpanded = false; workflowExportActions.onExportWord() })
-                        DropdownMenuItem(text = { Text("Export Page Images") }, onClick = { overflowExpanded = false; workflowExportActions.onExportImages() })
+                        DropdownMenuItem(
+                            text = { Text("Scan Images To Searchable PDF…") },
+                            onClick = { overflowExpanded = false; onShowScanImport() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Export Text") },
+                            enabled = hasDocument,
+                            onClick = { overflowExpanded = false; workflowExportActions.onExportText() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Export Markdown") },
+                            enabled = hasDocument,
+                            onClick = { overflowExpanded = false; workflowExportActions.onExportMarkdown() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Export Word") },
+                            enabled = hasDocument,
+                            onClick = { overflowExpanded = false; workflowExportActions.onExportWord() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Export Page Images") },
+                            enabled = hasDocument,
+                            onClick = { overflowExpanded = false; workflowExportActions.onExportImages() },
+                        )
                         DropdownMenuItem(text = { Text("Import Document As PDF") }, onClick = { overflowExpanded = false; workflowExportActions.onImportSourceAsPdf() })
                         DropdownMenuItem(text = { Text("Merge Sources To PDF") }, onClick = { overflowExpanded = false; workflowExportActions.onMergeSources() })
-                        DropdownMenuItem(text = { Text("Optimize High Quality") }, onClick = { overflowExpanded = false; workflowExportActions.onOptimizeHighQuality() })
-                        DropdownMenuItem(text = { Text("Optimize Balanced") }, onClick = { overflowExpanded = false; workflowExportActions.onOptimizeBalanced() })
-                        DropdownMenuItem(text = { Text("Optimize Small Size") }, onClick = { overflowExpanded = false; workflowExportActions.onOptimizeSmallSize() })
-                        DropdownMenuItem(text = { Text("Optimize Archival Safe") }, onClick = { overflowExpanded = false; workflowExportActions.onOptimizeArchivalSafe() })
+                        DropdownMenuItem(
+                            text = { Text("Optimize High Quality") },
+                            enabled = hasDocument,
+                            onClick = { overflowExpanded = false; workflowExportActions.onOptimizeHighQuality() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Optimize Balanced") },
+                            enabled = hasDocument,
+                            onClick = { overflowExpanded = false; workflowExportActions.onOptimizeBalanced() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Optimize Small Size") },
+                            enabled = hasDocument,
+                            onClick = { overflowExpanded = false; workflowExportActions.onOptimizeSmallSize() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Optimize Archival Safe") },
+                            enabled = hasDocument,
+                            onClick = { overflowExpanded = false; workflowExportActions.onOptimizeArchivalSafe() },
+                        )
                         DropdownMenuItem(text = { Text(if (state.annotationSidebarVisible) "Hide Sidebar" else "Show Sidebar") }, onClick = { overflowExpanded = false; onSidebarToggle() })
                     }
                 },
@@ -413,7 +494,8 @@ fun EditorScreen(
                             icon = action.icon(),
                             tooltip = action.tooltipLabel(),
                             selected = when (action) {
-                                EditorAction.Annotate -> state.activePanel == WorkspacePanel.Annotate
+                                EditorAction.Organize -> state.organizeVisible
+                                EditorAction.Annotate -> state.activePanel == WorkspacePanel.Annotate && !state.organizeVisible
                                 EditorAction.Forms -> state.activePanel == WorkspacePanel.Forms
                                 EditorAction.Sign -> state.activePanel == WorkspacePanel.Sign
                                 EditorAction.Search -> state.activePanel == WorkspacePanel.Search
@@ -423,13 +505,13 @@ fun EditorScreen(
                                 EditorAction.Protect -> state.activePanel == WorkspacePanel.Protect
                                 EditorAction.Settings -> state.activePanel == WorkspacePanel.Settings
                                 EditorAction.Diagnostics -> state.activePanel == WorkspacePanel.Diagnostics
-                                else -> false
+                                EditorAction.Share -> false
                             },
                             onClick = { onActionSelected(action) },
                         )
                     }
                 }
-                if (state.activePanel == WorkspacePanel.Annotate) {
+                if (state.activePanel == WorkspacePanel.Annotate && !state.organizeVisible) {
                     FlowRow(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -450,41 +532,93 @@ fun EditorScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         listOf("#F9AB00", "#0B57D0", "#B3261E", "#137333", "#5E35B1").forEach { colorHex ->
-                            ColorChip(colorHex = colorHex, onClick = { onRecolorSelected(colorHex) })
+                            ColorChip(
+                                colorHex = colorHex,
+                                enabled = hasSelectedAnnotation,
+                                onClick = { onRecolorSelected(colorHex) },
+                            )
                         }
-                        IconTooltipButton(icon = Icons.AutoMirrored.Outlined.Article, tooltip = "Add Text Box", onClick = onAddTextBox)
-                        IconTooltipButton(icon = Icons.Outlined.IosShare, tooltip = "Add Image", onClick = onAddImage)
-                        IconTooltipButton(icon = Icons.Outlined.Draw, tooltip = "Open Signature Tools", onClick = { onActionSelected(EditorAction.Sign) })
-                        IconTooltipButton(icon = Icons.Outlined.ContentCopy, tooltip = "Duplicate Annotation", onClick = onDuplicateSelected)
-                        IconTooltipButton(icon = Icons.Outlined.Delete, tooltip = "Delete Annotation", onClick = onDeleteSelected)
-                        IconTooltipButton(icon = Icons.Outlined.Rotate90DegreesCw, tooltip = "Rotate Page", onClick = onRotatePage)
-                        IconTooltipButton(icon = Icons.Outlined.GridView, tooltip = "Organize Pages", onClick = onReorderPages)
+                        IconTooltipButton(
+                            icon = Icons.AutoMirrored.Outlined.Article,
+                            tooltip = "Add Text Box",
+                            enabled = hasDocument,
+                            onClick = onAddTextBox,
+                        )
+                        IconTooltipButton(
+                            icon = Icons.Outlined.IosShare,
+                            tooltip = "Add Image",
+                            enabled = hasDocument,
+                            onClick = onAddImage,
+                        )
+                        IconTooltipButton(
+                            icon = Icons.Outlined.Draw,
+                            tooltip = "Open Signature Tools",
+                            enabled = hasDocument && hasSignatureFields,
+                            onClick = { onActionSelected(EditorAction.Sign) },
+                        )
+                        IconTooltipButton(
+                            icon = Icons.Outlined.ContentCopy,
+                            tooltip = "Duplicate Selected Annotation",
+                            enabled = hasSelectedAnnotation,
+                            onClick = onDuplicateSelected,
+                        )
+                        IconTooltipButton(
+                            icon = Icons.Outlined.Delete,
+                            tooltip = "Delete Selected Annotation",
+                            enabled = hasSelectedAnnotation,
+                            onClick = onDeleteSelected,
+                        )
+                        IconTooltipButton(
+                            icon = Icons.Outlined.Rotate90DegreesCw,
+                            tooltip = "Rotate Current Page",
+                            enabled = hasDocument,
+                            onClick = onRotatePage,
+                        )
+                        IconTooltipButton(
+                            icon = Icons.Outlined.GridView,
+                            tooltip = "Open Organizer",
+                            enabled = hasDocument,
+                            onClick = onReorderPages,
+                        )
                     }
                 }
-                Box(modifier = Modifier.fillMaxSize()) {
-                    PdfSessionViewport(
-                        modifier = Modifier.fillMaxSize(),
-                        document = document,
-                        selection = session.selection,
-                        activeTool = state.activeTool,
-                        currentPage = session.selection.selectedPageIndex,
-                        searchHits = state.searchResults.hits,
-                        selectedTextBlocks = state.selectedTextSelection?.blocks.orEmpty(),
-                        callbacks = PdfViewportCallbacks(
-                            onDocumentLoaded = onDocumentLoaded,
-                            onPageChanged = onPageChanged,
-                            onAnnotationCreated = onAnnotationCreated,
-                            onAnnotationUpdated = onAnnotationUpdated,
-                            onAnnotationSelectionChanged = onAnnotationSelectionChanged,
-                            onFormFieldTapped = onFormFieldTapped,
-                            onPageEditSelected = onPageEditSelectionChanged,
-                            onPageEditUpdated = onPageEditUpdated,
-                        ),
+                if (state.organizeVisible) {
+                    OrganizerSurface(
+                        modifier = Modifier.fillMaxSize().padding(12.dp),
+                        pageCount = organizerPageCount,
+                        currentPageIndex = session.selection.selectedPageIndex,
+                        onBack = { onActionSelected(EditorAction.Annotate) },
+                        onOpenPage = { pageIndex ->
+                            onPageChanged(pageIndex, organizerPageCount)
+                            onActionSelected(EditorAction.Annotate)
+                        },
                     )
+                } else {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        PdfSessionViewport(
+                            modifier = Modifier.fillMaxSize(),
+                            document = document,
+                            selection = session.selection,
+                            activeTool = state.activeTool,
+                            currentPage = session.selection.selectedPageIndex,
+                            searchHits = state.searchResults.hits,
+                            selectedTextBlocks = state.selectedTextSelection?.blocks.orEmpty(),
+                            callbacks = PdfViewportCallbacks(
+                                onDocumentLoaded = onDocumentLoaded,
+                                onPageChanged = onPageChanged,
+                                onAnnotationCreated = onAnnotationCreated,
+                                onAnnotationUpdated = onAnnotationUpdated,
+                                onAnnotationSelectionChanged = onAnnotationSelectionChanged,
+                                onFormFieldTapped = onFormFieldTapped,
+                                onPageEditSelected = onPageEditSelectionChanged,
+                                onPageEditUpdated = onPageEditUpdated,
+                            ),
+                        )
+                    }
                 }
             }
             when {
-                state.activePanel == WorkspacePanel.Search && state.annotationSidebarVisible -> {
+                !state.organizeVisible && state.activePanel == WorkspacePanel.Search && state.annotationSidebarVisible -> {
                     SearchSidebar(
                         modifier = Modifier.width(380.dp).fillMaxHeight().padding(12.dp),
                         query = state.searchQuery,
@@ -512,7 +646,7 @@ fun EditorScreen(
                         onOpenOcrPage = onOpenOcrPage,
                     )
                 }
-                state.activePanel == WorkspacePanel.Assistant && state.annotationSidebarVisible -> {
+                !state.organizeVisible && state.activePanel == WorkspacePanel.Assistant && state.annotationSidebarVisible -> {
                     AssistantSidebar(
                         modifier = Modifier.width(420.dp).fillMaxHeight().padding(12.dp),
                         state = state.assistantState,
@@ -548,7 +682,7 @@ fun EditorScreen(
                         onAssistantAudioEnabledChanged = onAssistantAudioEnabledChanged,
                     )
                 }
-                state.activePanel == WorkspacePanel.Review && state.annotationSidebarVisible -> {
+                !state.organizeVisible && state.activePanel == WorkspacePanel.Review && state.annotationSidebarVisible -> {
                     ReviewSidebar(
                         modifier = Modifier.width(420.dp).fillMaxHeight().padding(12.dp),
                         shareLinks = state.shareLinks,
@@ -584,7 +718,7 @@ fun EditorScreen(
                         onOpenCompareMarker = workflowExportActions.onOpenCompareMarker,
                     )
                 }
-                state.activePanel == WorkspacePanel.Activity && state.annotationSidebarVisible -> {
+                !state.organizeVisible && state.activePanel == WorkspacePanel.Activity && state.annotationSidebarVisible -> {
                     ActivitySidebar(
                         modifier = Modifier.width(380.dp).fillMaxHeight().padding(12.dp),
                         events = state.activityEvents,
@@ -595,7 +729,7 @@ fun EditorScreen(
                         onMarkRequestCompleted = onMarkWorkflowRequestCompleted,
                     )
                 }
-                state.activePanel == WorkspacePanel.Settings && state.annotationSidebarVisible -> {
+                !state.organizeVisible && state.activePanel == WorkspacePanel.Settings && state.annotationSidebarVisible -> {
                     SettingsAdminSidebar(
                         modifier = Modifier.width(420.dp).fillMaxHeight().padding(12.dp),
                         state = state.enterpriseState,
@@ -620,7 +754,7 @@ fun EditorScreen(
                         onCleanupConnectorCache = onCleanupConnectorCache,
                     )
                 }
-                state.activePanel == WorkspacePanel.Diagnostics && state.annotationSidebarVisible -> {
+                !state.organizeVisible && state.activePanel == WorkspacePanel.Diagnostics && state.annotationSidebarVisible -> {
                     DiagnosticsSidebar(
                         modifier = Modifier.width(420.dp).fillMaxHeight().padding(12.dp),
                         snapshot = state.runtimeDiagnostics,
@@ -629,7 +763,7 @@ fun EditorScreen(
                         onCleanupCaches = onCleanupRuntimeCaches,
                     )
                 }
-                state.activePanel == WorkspacePanel.Protect && state.annotationSidebarVisible -> {
+                !state.organizeVisible && state.activePanel == WorkspacePanel.Protect && state.annotationSidebarVisible -> {
                     SecuritySidebar(
                         modifier = Modifier.width(420.dp).fillMaxHeight().padding(12.dp),
                         security = state.session.document?.security ?: com.aymanelbanhawy.editor.core.security.SecurityDocumentModel(),
@@ -650,7 +784,7 @@ fun EditorScreen(
                         onExportAudit = onExportAuditTrail,
                     )
                 }
-                state.activePanel == WorkspacePanel.Annotate && state.selectedEditObject != null && state.annotationSidebarVisible -> {
+                !state.organizeVisible && state.activePanel == WorkspacePanel.Annotate && state.selectedEditObject != null && state.annotationSidebarVisible -> {
                     EditInspectorSidebar(
                         modifier = Modifier.width(360.dp).fillMaxHeight().padding(12.dp),
                         editObjects = state.currentPageEditObjects,
@@ -671,7 +805,7 @@ fun EditorScreen(
                         onRotationChanged = onSelectedEditRotationChanged,
                     )
                 }
-                state.activePanel == WorkspacePanel.Annotate && state.annotationSidebarVisible -> {
+                !state.organizeVisible && state.activePanel == WorkspacePanel.Annotate && state.annotationSidebarVisible -> {
                     AnnotationSidebar(
                         modifier = Modifier.width(320.dp).fillMaxHeight().padding(12.dp),
                         annotations = state.currentPageAnnotations,
@@ -679,7 +813,9 @@ fun EditorScreen(
                         onSelectAnnotation = onSelectAnnotation,
                     )
                 }
-                state.annotationSidebarVisible -> {
+                !state.organizeVisible &&
+                    state.annotationSidebarVisible &&
+                    (state.activePanel == WorkspacePanel.Forms || state.activePanel == WorkspacePanel.Sign) -> {
                     FormsSidebar(
                         modifier = Modifier.width(360.dp).fillMaxHeight().padding(12.dp),
                         activeSignMode = state.activePanel == WorkspacePanel.Sign,
@@ -747,10 +883,127 @@ private fun AnnotationSidebar(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ColorChip(colorHex: String, onClick: () -> Unit) {
+private fun OrganizerSurface(
+    modifier: Modifier = Modifier,
+    pageCount: Int,
+    currentPageIndex: Int,
+    onBack: () -> Unit,
+    onOpenPage: (Int) -> Unit,
+) {
+    Surface(
+        modifier = modifier,
+        tonalElevation = 2.dp,
+        shape = RoundedCornerShape(20.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Organizer", style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        text = if (pageCount == 1) "1 page" else "$pageCount pages",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+
+                TextButton(onClick = onBack) {
+                    Text("Back to Editor")
+                }
+            }
+
+            Text(
+                text = "Select a page to jump back into the editor.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            if (pageCount <= 0) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    tonalElevation = 1.dp,
+                ) {
+                    Text(
+                        text = "No pages are available for organizing yet.",
+                        modifier = Modifier.padding(16.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            } else {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    repeat(pageCount) { pageIndex ->
+                        val selected = pageIndex == currentPageIndex
+
+                        Surface(
+                            modifier = Modifier.width(104.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            tonalElevation = if (selected) 4.dp else 1.dp,
+                            color = if (selected) {
+                                MaterialTheme.colorScheme.secondaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant
+                            },
+                            onClick = { onOpenPage(pageIndex) },
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(112.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(MaterialTheme.colorScheme.surface),
+                                )
+
+                                Text(
+                                    text = "Page ${pageIndex + 1}",
+                                    style = MaterialTheme.typography.labelLarge,
+                                )
+
+                                if (selected) {
+                                    Text(
+                                        text = "Current",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ColorChip(
+    colorHex: String,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+) {
     val color = Color(colorHex.toColorInt())
-    TextButton(onClick = onClick) {
+    TextButton(onClick = onClick, enabled = enabled) {
         Box(modifier = Modifier.clip(CircleShape).background(color).width(28.dp).padding(vertical = 14.dp))
     }
 }
@@ -805,7 +1058,7 @@ private fun EditorAction.icon() = when (this) {
     EditorAction.Review -> Icons.AutoMirrored.Outlined.Comment
     EditorAction.Activity -> Icons.Outlined.History
     EditorAction.Settings -> Icons.Outlined.Settings
-    EditorAction.Diagnostics -> Icons.Outlined.Settings
+    EditorAction.Diagnostics -> Icons.Outlined.BugReport
 }
 
 private fun EditorAction.tooltipLabel(): String = when (this) {
@@ -822,13 +1075,6 @@ private fun EditorAction.tooltipLabel(): String = when (this) {
     EditorAction.Settings -> "Settings"
     EditorAction.Diagnostics -> "Diagnostics"
 }
-
-
-
-
-
-
-
 
 
 

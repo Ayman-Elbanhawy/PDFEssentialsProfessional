@@ -64,6 +64,12 @@ fun FormsSidebar(
     onApplySignature: (String, String) -> Unit,
 ) {
     var profileName by remember { mutableStateOf("Field Profile") }
+    val visibleFields = if (activeSignMode) {
+        fields.filter { it.type == FormFieldType.Signature }
+    } else {
+        fields
+    }
+
     Surface(modifier = modifier, tonalElevation = 2.dp, shape = RoundedCornerShape(20.dp)) {
         Column(
             modifier = Modifier
@@ -72,7 +78,7 @@ fun FormsSidebar(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(if (activeSignMode) "Signatures" else "Forms", style = MaterialTheme.typography.titleMedium)
-            if (validationMessage != null) {
+            if (validationMessage != null && selectedField != null) {
                 Text(
                     text = validationMessage,
                     style = MaterialTheme.typography.bodySmall,
@@ -83,37 +89,77 @@ fun FormsSidebar(
                         .padding(10.dp),
                 )
             }
-            OutlinedTextField(
-                value = profileName,
-                onValueChange = { profileName = it },
-                label = { Text("Profile name") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconTooltipButton(icon = Icons.Outlined.ContentCopy, tooltip = "Save Profile", onClick = { onSaveProfile(profileName) })
-                IconTooltipButton(icon = Icons.Outlined.Download, tooltip = "Export Form JSON", onClick = onExportFormData)
-                profiles.take(4).forEach { profile ->
-                    IconTooltipButton(
-                        icon = Icons.Outlined.Person,
-                        tooltip = "Apply profile: ${profile.name}",
-                        onClick = { onApplyProfile(profile.id) },
+
+            if (activeSignMode) {
+                Text(
+                    text = "Select a signature field to capture a new signature or apply one of your saved signatures.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+
+                if (signatures.isEmpty()) {
+                    Text(
+                        text = "No saved signatures yet.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-            }
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(fields, key = { it.name }) { field ->
-                    FieldCard(
-                        field = field,
-                        selected = field.name == selectedField?.name,
-                        signatures = signatures,
-                        onSelectField = onSelectField,
-                        onTextChanged = onTextChanged,
-                        onBooleanChanged = onBooleanChanged,
-                        onChoiceChanged = onChoiceChanged,
-                        onOpenSignatureCapture = onOpenSignatureCapture,
-                        onApplySignature = onApplySignature,
+            } else {
+                OutlinedTextField(
+                    value = profileName,
+                    onValueChange = { profileName = it },
+                    label = { Text("Profile name") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    IconTooltipButton(
+                        icon = Icons.Outlined.ContentCopy,
+                        tooltip = "Save Profile",
+                        enabled = profileName.isNotBlank() && visibleFields.isNotEmpty(),
+                        onClick = { onSaveProfile(profileName) },
                     )
+                    IconTooltipButton(
+                        icon = Icons.Outlined.Download,
+                        tooltip = "Export Form JSON",
+                        enabled = visibleFields.isNotEmpty(),
+                        onClick = onExportFormData,
+                    )
+                    profiles.take(4).forEach { profile ->
+                        IconTooltipButton(
+                            icon = Icons.Outlined.Person,
+                            tooltip = "Apply profile: ${profile.name}",
+                            enabled = visibleFields.isNotEmpty(),
+                            onClick = { onApplyProfile(profile.id) },
+                        )
+                    }
+                }
+            }
+            if (visibleFields.isEmpty()) {
+                Text(
+                    text = if (activeSignMode) {
+                        "No signature fields are available on this page."
+                    } else {
+                        "No form fields are available on this page."
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(visibleFields, key = { it.name }) { field ->
+                        FieldCard(
+                            field = field,
+                            selected = field.name == selectedField?.name,
+                            signatures = signatures,
+                            onSelectField = onSelectField,
+                            onTextChanged = onTextChanged,
+                            onBooleanChanged = onBooleanChanged,
+                            onChoiceChanged = onChoiceChanged,
+                            onOpenSignatureCapture = onOpenSignatureCapture,
+                            onApplySignature = onApplySignature,
+                        )
+                    }
                 }
             }
         }

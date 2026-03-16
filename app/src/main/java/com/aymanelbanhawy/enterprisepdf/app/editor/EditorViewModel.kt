@@ -502,9 +502,15 @@ class EditorViewModel(
     }
 
     fun onActionSelected(action: EditorAction) {
+        if (action != EditorAction.Organize) {
+            organizeVisible.value = false
+        }
+
         when (action) {
             EditorAction.Organize -> {
                 organizeVisible.value = true
+                activePanel.value = WorkspacePanel.Annotate
+                sidebarVisible.value = false
                 refreshThumbnailsAsync()
             }
             EditorAction.Forms -> {
@@ -579,9 +585,24 @@ class EditorViewModel(
         }
     }
 
-    fun showEditor() { organizeVisible.value = false }
-    fun showOrganize() { organizeVisible.value = true; refreshThumbnailsAsync() }
-    fun onToolSelected(tool: AnnotationTool) { activeTool.value = tool; activePanel.value = WorkspacePanel.Annotate }
+    fun showEditor() {
+        organizeVisible.value = false
+        sidebarVisible.value = true
+    }
+
+    fun showOrganize() {
+        organizeVisible.value = true
+        activePanel.value = WorkspacePanel.Annotate
+        sidebarVisible.value = false
+        refreshThumbnailsAsync()
+    }
+
+    fun onToolSelected(tool: AnnotationTool) {
+        organizeVisible.value = false
+        activeTool.value = tool
+        activePanel.value = WorkspacePanel.Annotate
+        sidebarVisible.value = true
+    }
     fun toggleAnnotationSidebar() { sidebarVisible.value = !sidebarVisible.value }
     fun updateSearchQuery(value: String) { searchQuery.value = value }
     fun updateAssistantPrompt(value: String) {
@@ -2567,7 +2588,6 @@ private data class ActiveReadAloudSession(
     val segments: List<String>,
     val startIndex: Int,
 )
-
 
 
 

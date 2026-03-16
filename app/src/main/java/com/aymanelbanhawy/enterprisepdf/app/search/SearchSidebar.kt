@@ -90,6 +90,7 @@ fun SearchSidebar(
     val readingSource = selectedText.ifBlank {
         results.hits.getOrNull(results.selectedHitIndex)?.preview ?: results.hits.firstOrNull()?.preview.orEmpty()
     }
+    val hasHits = results.hits.isNotEmpty()
     var readingModeEnabled by rememberSaveable { mutableStateOf(readingSource.isNotBlank()) }
     Surface(
         modifier = modifier
@@ -118,9 +119,24 @@ fun SearchSidebar(
                 singleLine = true,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                IconTooltipButton(icon = Icons.Outlined.Search, tooltip = "Search", onClick = onSearch)
-                IconTooltipButton(icon = Icons.AutoMirrored.Outlined.ArrowBack, tooltip = "Previous Result", onClick = onPreviousHit)
-                IconTooltipButton(icon = Icons.AutoMirrored.Outlined.ArrowForward, tooltip = "Next Result", onClick = onNextHit)
+                IconTooltipButton(
+                    icon = Icons.Outlined.Search,
+                    tooltip = "Search",
+                    enabled = query.isNotBlank(),
+                    onClick = onSearch,
+                )
+                IconTooltipButton(
+                    icon = Icons.AutoMirrored.Outlined.ArrowBack,
+                    tooltip = "Previous Result",
+                    enabled = hasHits,
+                    onClick = onPreviousHit,
+                )
+                IconTooltipButton(
+                    icon = Icons.AutoMirrored.Outlined.ArrowForward,
+                    tooltip = "Next Result",
+                    enabled = hasHits,
+                    onClick = onNextHit,
+                )
             }
             if (isIndexing) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -288,6 +304,7 @@ private fun OcrSection(
     val running = jobs.count { it.status == OcrJobStatus.Running }
     val pending = jobs.count { it.status == OcrJobStatus.Pending || it.status == OcrJobStatus.RetryScheduled }
     val progress = if (jobs.isEmpty()) 0 else jobs.map { it.progressPercent.coerceIn(0, 100) }.average().roundToInt()
+    val hasJobs = jobs.isNotEmpty()
 
     HorizontalDivider()
     Text("OCR", style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
@@ -300,10 +317,29 @@ private fun OcrSection(
         style = MaterialTheme.typography.bodySmall,
     )
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        IconTooltipButton(icon = Icons.Outlined.Save, tooltip = "Save OCR Settings", onClick = onSaveSettings)
-        IconTooltipButton(icon = Icons.Outlined.PauseCircleOutline, tooltip = "Pause All OCR", onClick = { onPauseOcr(null) })
-        IconTooltipButton(icon = Icons.Outlined.PlayCircleOutline, tooltip = "Resume All OCR", onClick = { onResumeOcr(null) })
-        IconTooltipButton(icon = Icons.Outlined.Sync, tooltip = "Re-run All OCR", onClick = { onRerunOcr(null) })
+        IconTooltipButton(
+            icon = Icons.Outlined.Save,
+            tooltip = "Save OCR Settings",
+            onClick = onSaveSettings,
+        )
+        IconTooltipButton(
+            icon = Icons.Outlined.PauseCircleOutline,
+            tooltip = "Pause All OCR",
+            enabled = hasJobs,
+            onClick = { onPauseOcr(null) },
+        )
+        IconTooltipButton(
+            icon = Icons.Outlined.PlayCircleOutline,
+            tooltip = "Resume All OCR",
+            enabled = hasJobs,
+            onClick = { onResumeOcr(null) },
+        )
+        IconTooltipButton(
+            icon = Icons.Outlined.Sync,
+            tooltip = "Re-run All OCR",
+            enabled = hasJobs,
+            onClick = { onRerunOcr(null) },
+        )
     }
     OutlinedTextField(
         modifier = Modifier.fillMaxWidth(),
@@ -454,14 +490,29 @@ private fun LazyListScope.appendOutlineItems(
     onOpenOutlineItem: (Int) -> Unit,
 ) {
     itemsIndexed(outline, key = { _, item -> "$depth:${item.pageIndex}:${item.title}" }) { _, item ->
-        IconTooltipButton(
-            icon = Icons.Outlined.BookmarkBorder,
-            tooltip = "Open bookmark: ${item.title}",
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = (depth * 12).dp),
+            tonalElevation = 0.dp,
+            shape = MaterialTheme.shapes.medium,
             onClick = { onOpenOutlineItem(item.pageIndex) },
-        )
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                androidx.compose.material3.Icon(Icons.Outlined.BookmarkBorder, contentDescription = null)
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(item.title, style = MaterialTheme.typography.bodyMedium)
+                    Text("Page ${item.pageIndex + 1}", style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        }
     }
     outline.forEach { item ->
         appendOutlineItems(item.children, depth + 1, onOpenOutlineItem)
     }
 }
-

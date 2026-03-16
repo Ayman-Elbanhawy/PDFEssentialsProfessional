@@ -27,16 +27,11 @@ fun EditorWorkspaceHost(
     onShareText: (EditorSessionEvent.ShareText) -> Unit,
 ) {
     val context = LocalContext.current
-    // Basic PDF open stays on the Android Storage Access Framework so Google Drive,
-    // Downloads, Documents, and on-device providers all appear through one picker.
     val openPdfLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-        persistReadPermission(context, uri)
-        val request = PdfOpenIntentResolver.resolveSafSelection(context, uri)
-        if (request != null) {
-            viewModel.openIncomingDocument(request)
-        } else if (uri != null) {
-            viewModel.showUserMessage("The selected file is not a readable PDF")
-        }
+        handlePickedPdfSelection(context, viewModel, uri)
+    }
+    val openPdfFromFilesLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        handlePickedPdfSelection(context, viewModel, uri)
     }
     val mergeLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris: List<Uri> ->
         viewModel.mergeDocuments(uris)
@@ -50,7 +45,8 @@ fun EditorWorkspaceHost(
     val replaceEditImageLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let(viewModel::replaceSelectedImage)
     }
-    val profileLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+    val profileLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        persistReadPermission(context, uri)
         uri?.let(viewModel::importFormProfile)
     }
     val scanImagesLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris: List<Uri> ->
@@ -72,9 +68,27 @@ fun EditorWorkspaceHost(
         onShareDocument = onShareDocument,
         onShareText = onShareText,
         workflowExportActions = workflowExportActions,
-        onOpenPdf = { openPdfLauncher.launch(arrayOf("application/pdf")) },
-        onOpenFromFiles = { openPdfLauncher.launch(arrayOf("application/pdf")) },
-        onImportProfile = { profileLauncher.launch("application/json") },
+        onOpenPdf = {
+            openPdfLauncher.launch(
+                arrayOf(
+                    "application/pdf",
+                    "application/x-pdf",
+                    "application/octet-stream",
+                ),
+            )
+        },
+        onOpenFromFiles = {
+            openPdfFromFilesLauncher.launch("*/*")
+        },
+        onImportProfile = {
+            profileLauncher.launch(
+                arrayOf(
+                    "application/json",
+                    "application/octet-stream",
+                    "text/plain",
+                ),
+            )
+        },
         onAddImage = { editImageLauncher.launch("image/*") },
         onReplaceSelectedImage = { replaceEditImageLauncher.launch("image/*") },
         onPickScanImages = { scanImagesLauncher.launch("image/*") },
@@ -322,8 +336,25 @@ private fun rememberEditorScreenCallbacks(
     onShareTextRequested = onShareText,
 )
 
-private fun persistReadPermission(context: android.content.Context, uri: Uri?) {
+private fun handlePickedPdfSelection(
+    context: android.content.Context,
+    viewModel: EditorViewModel,
+    uri: Uri?,
+) {
     if (uri == null) return
+
+    persistReadPermission(context, uri)
+
+    val request = PdfOpenIntentResolver.resolveSafSelection(context, uri)
+    if (request != null) {
+        viewModel.openIncomingDocument(request)
+    } else {
+        viewModel.showUserMessage("The selected file could not be opened as a PDF")
+    }
+}
+
+private fun persistReadPermission(context: android.content.Context, uri: Uri?) {
+    if (uri == null || uri.scheme != android.content.ContentResolver.SCHEME_CONTENT) return
     runCatching {
         context.contentResolver.takePersistableUriPermission(
             uri,
@@ -331,5 +362,4 @@ private fun persistReadPermission(context: android.content.Context, uri: Uri?) {
         )
     }
 }
-
 

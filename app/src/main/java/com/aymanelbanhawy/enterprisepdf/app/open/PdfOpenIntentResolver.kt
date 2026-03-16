@@ -8,10 +8,28 @@ import android.net.Uri
 import android.os.Build
 import android.provider.OpenableColumns
 import com.aymanelbanhawy.editor.core.model.OpenDocumentRequest
+import java.io.BufferedInputStream
 import java.io.File
 import java.util.Locale
 
 object PdfOpenIntentResolver {
+
+    private val pdfHeader = byteArrayOf(
+        '%'.code.toByte(),
+        'P'.code.toByte(),
+        'D'.code.toByte(),
+        'F'.code.toByte(),
+        '-'.code.toByte(),
+    )
+
+    private val acceptedPdfMimeTypes = setOf(
+        "application/pdf",
+        "application/x-pdf",
+        "application/acrobat",
+        "applications/vnd.pdf",
+        "text/pdf",
+    )
+
     fun resolve(context: Context, intent: Intent?): PendingPdfOpenRequest? {
         if (intent == null) return null
         return when (intent.action) {
@@ -35,12 +53,15 @@ object PdfOpenIntentResolver {
         source: PdfOpenSource,
     ): PendingPdfOpenRequest? {
         if (uri == null) return null
+
         val displayName = context.contentResolver.displayNameFor(uri)
             ?: uri.lastPathSegment
             ?: "document.pdf"
+
         if (!context.contentResolver.looksLikePdf(uri, displayName)) {
             return null
         }
+
         val request = when (uri.scheme?.lowercase(Locale.US)) {
             ContentResolver.SCHEME_FILE -> {
                 val path = uri.path ?: return null
@@ -49,14 +70,17 @@ object PdfOpenIntentResolver {
                     displayNameOverride = displayName,
                 )
             }
+
             ContentResolver.SCHEME_CONTENT -> {
                 OpenDocumentRequest.FromUri(
                     uriString = uri.toString(),
                     displayName = displayName,
                 )
             }
+
             else -> return null
         }
+
         return PendingPdfOpenRequest(
             request = request,
             source = source,
@@ -69,6 +93,7 @@ object PdfOpenIntentResolver {
         if (uri.scheme == ContentResolver.SCHEME_FILE) {
             return uri.lastPathSegment?.substringAfterLast(File.separatorChar)
         }
+
         return runCatching {
             query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
                 cursor.firstStringOrNull(OpenableColumns.DISPLAY_NAME)
@@ -77,14 +102,42 @@ object PdfOpenIntentResolver {
     }
 
     private fun ContentResolver.looksLikePdf(uri: Uri, displayName: String): Boolean {
-        if (displayName.lowercase(Locale.US).endsWith(".pdf")) {
+        val normalizedDisplayName = displayName.lowercase(Locale.US)
+        if (normalizedDisplayName.endsWith(".pdf")) {
             return true
         }
+
         if (uri.scheme == ContentResolver.SCHEME_FILE) {
             return uri.path?.lowercase(Locale.US)?.endsWith(".pdf") == true
         }
-        val mimeType = runCatching { getType(uri) }.getOrNull()?.lowercase(Locale.US)
-        return mimeType == "application/pdf"
+
+        val mimeType = runCatching { getType(uri) }
+            .getOrNull()
+            ?.substringBefore(';')
+            ?.trim()
+            ?.lowercase(Locale.US)
+
+        if (mimeType in acceptedPdfMimeTypes) {
+            return true
+        }
+
+        if (mimeType == null || mimeType == "application/octet-stream" || mimeType == "*/*") {
+            return hasPdfHeader(uri)
+        }
+
+        return mimeType.startsWith("application/") && hasPdfHeader(uri)
+    }
+
+    private fun ContentResolver.hasPdfHeader(uri: Uri): Boolean {
+        return runCatching {
+            openInputStream(uri)?.use { rawStream ->
+                val input =
+                    if (rawStream.markSupported()) rawStream else BufferedInputStream(rawStream)
+                val header = ByteArray(pdfHeader.size)
+                val bytesRead = input.read(header)
+                bytesRead == pdfHeader.size && header.contentEquals(pdfHeader)
+            } ?: false
+        }.getOrDefault(false)
     }
 
     private fun Cursor.firstStringOrNull(columnName: String): String? {
