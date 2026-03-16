@@ -115,7 +115,7 @@ fun AssistantSidebar(
                         minLines = 3,
                     )
                     Text(
-                        text = "Ask PDF answers your typed question. Quick Summary creates a concise overview and will bias toward your prompt when one is present.",
+                        text = "Ask PDF answers your typed question. Quick Summary creates a concise overview and will use your prompt when one is present.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -382,7 +382,6 @@ private fun defaultProviderName(kind: AiProviderKind): String = when (kind) {
     AiProviderKind.OpenAi -> "OpenAI"
     AiProviderKind.OpenAiCompatible -> "OpenAI Compatible"
 }
-
 
 
 

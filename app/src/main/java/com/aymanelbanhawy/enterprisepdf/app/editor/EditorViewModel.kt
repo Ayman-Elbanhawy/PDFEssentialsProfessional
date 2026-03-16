@@ -677,6 +677,70 @@ class EditorViewModel(
         refreshThumbnailsAsync()
     }
 
+    fun updateSplitRangeExpression(value: String) {
+        splitRangeExpression.value = value
+    }
+
+    fun applySplitRange() {
+        val document = session.state.value.document ?: return
+
+        val request = when {
+            selectedPageIndexes.value.isNotEmpty() -> {
+                SplitRequest(
+                    mode = SplitMode.SelectedPages,
+                    selectedPageIndexes = selectedPageIndexes.value,
+                )
+            }
+
+            splitRangeExpression.value.isNotBlank() -> {
+                SplitRequest(
+                    mode = SplitMode.PageRanges,
+                    rangeExpression = splitRangeExpression.value.trim(),
+                )
+            }
+
+            else -> {
+                showUserMessage("Enter a page range or select pages first")
+                return
+            }
+        }
+
+        viewModelScope.launch {
+            val tempAnchor = repository.createAutosaveTempFile(
+                "split-${document.documentRef.sourceKey.hashCode()}",
+            )
+            val parentDir = tempAnchor.parentFile ?: appContainer.appContext.cacheDir
+            tempAnchor.delete()
+
+            val outputDir = File(parentDir, "split-${System.currentTimeMillis()}").apply {
+                mkdirs()
+            }
+
+            runCatching {
+                repository.split(document, request, outputDir)
+            }.onSuccess { files ->
+                if (files.isEmpty()) {
+                    localEvents.emit(
+                        EditorSessionEvent.UserMessage("No split files were created"),
+                    )
+                } else {
+                    splitRangeExpression.value = ""
+                    localEvents.emit(
+                        EditorSessionEvent.UserMessage(
+                            "Created ${files.size} split PDF file(s) in ${outputDir.absolutePath}",
+                        ),
+                    )
+                }
+            }.onFailure { error ->
+                localEvents.emit(
+                    EditorSessionEvent.UserMessage(
+                        error.message ?: "Unable to split document",
+                    ),
+                )
+            }
+        }
+    }
+
     fun onToolSelected(tool: AnnotationTool) {
         organizeVisible.value = false
         activeTool.value = tool
@@ -1814,65 +1878,6 @@ class EditorViewModel(
         }
     }
 
-    fun updateSplitRangeExpression(value: String) {
-        splitRangeExpression.value = value
-    }
-
-    fun applySplitRange() {
-        val document = session.state.value.document ?: return
-
-        val request = when {
-            selectedPageIndexes.value.isNotEmpty() -> {
-                SplitRequest(
-                    mode = SplitMode.SelectedPages,
-                    selectedPageIndexes = selectedPageIndexes.value,
-                )
-            }
-
-            splitRangeExpression.value.isNotBlank() -> {
-                SplitRequest(
-                    mode = SplitMode.PageRanges,
-                    rangeExpression = splitRangeExpression.value.trim(),
-                )
-            }
-
-            else -> {
-                showUserMessage("Enter a page range or select pages first")
-                return
-            }
-        }
-
-        viewModelScope.launch {
-            val tempAnchor = repository.createAutosaveTempFile("split-${document.documentRef.sourceKey.hashCode()}")
-            val parentDir = tempAnchor.parentFile
-            if (parentDir == null) {
-                localEvents.emit(EditorSessionEvent.UserMessage("Unable to prepare split output directory"))
-                return@launch
-            }
-
-            val outputDir = File(parentDir, "split-${System.currentTimeMillis()}").apply { mkdirs() }
-
-            runCatching {
-                repository.split(document, request, outputDir)
-            }.onSuccess { files ->
-                localEvents.emit(
-                    EditorSessionEvent.UserMessage(
-                        if (files.isEmpty()) {
-                            "No split files were created"
-                        } else {
-                            "Created ${files.size} split PDF file(s) in ${outputDir.absolutePath}"
-                        },
-                    ),
-                )
-            }.onFailure { error ->
-                localEvents.emit(
-                    EditorSessionEvent.UserMessage(
-                        error.message ?: "Unable to split document",
-                    ),
-                )
-            }
-        }
-    }
 
     fun splitByRange() { split(SplitRequest(SplitMode.PageRanges, rangeExpression = uiState.value.splitRangeExpression)) }
     fun splitOddPages() { split(SplitRequest(SplitMode.OddPages)) }
@@ -2744,7 +2749,6 @@ private data class ActiveReadAloudSession(
     val segments: List<String>,
     val startIndex: Int,
 )
-
 
 
 
